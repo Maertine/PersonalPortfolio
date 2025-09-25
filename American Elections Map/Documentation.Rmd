@@ -1,0 +1,117 @@
+---
+title: "Documentation"
+output: html_document
+---
+
+# American Elections Map
+
+Welcome to the **American Elections Map App**!  
+This application provides an interactive way to explore historical election data from 1823 to 1968, visualize results on maps, run predictions for the 1972 election, analyze trends, and explore the underlying data.
+
+---
+
+## 1. Introduction
+The purpose of this app is to:
+- Explore election results over time.
+- Compare state- and county-level outcomes.
+- Visualize winners by party and vote share.
+- Play with the possible results of 1972 election.
+
+Target users include researchers, analysts, students, and anyone interested in US electoral history.
+
+---
+
+## 2. Data Sources
+The underlying data comes from the dataset [United States Historical Election Returns, 1824-1968 (ICPSR 1)](https://www.icpsr.umich.edu/web/ICPSR/studies/1/datadocumentation#) released in 1999, originally in ASCII format, but fortunately processed for use in R by Kaggle user [Roee Diler](https://www.kaggle.com/roeediler). Further preprocessing was done by me and can be found on my GitHub as the R script **`preprocess_data.R`**.
+
+The geographical data for counties and US states used in various visualizations were downloaded using the R package [tigris](https://cran.r-project.org/web/packages/tigris/index.html). We then adjusted the maps to place Alaska and Hawaii below the lower 48 states, and we also dissolved counties that were not present in 1968.
+
+The data covers **presidential (1824–1968)**, **gubernatorial (1823–1968)**, **congressional (1834–1968)**, and **senate (1902–1968)** elections. The source claims to contain more than 90% of all county-level returns. Some notable omissions include:  
+- Michigan and Colorado for the 1968 presidential election,  
+- Texas for the 1932 and 1936 presidential elections, as well as several other elections for various offices within this time frame,  
+- Minnesota in 1948 for all election types,  
+- Washington prior to 1926 (although it became a state in 1889),
+- Connecticut from 1862 until 1904,
+- Many other missing returns for some counties, particularly prior to the 1900s.
+
+The data includes results for more than 900 parties, each assigned an appropriate color. Many parties share the same color because they are regional or independent affiliates of national parties. For example, the National Democratic Party of Alabama was an affiliate of the Democratic Party and therefore shares the same blue color.
+
+---
+
+## 3. How to Use the App
+
+### Interactive Map
+- Hover over counties or states to see tooltips with vote breakdowns.
+- Colors represent the winning party in each region and their share of votes.
+- Use filters in the sidebar to adjust **Year**, **Election Type** and **Scope**.
+
+### Predictions
+- Using a tool similar to **[270toWin](https://www.270towin.com)**, the generate a map predicting results at the county level, along with the **Electoral College** prediction.  
+- This features uses the **XGBoost** model (eXtreme Gradient BOOSTing decision tree), trained using data from **1884 to 1968**. This includes the entirety of the **Fourth Party System (1896–1932)**, the last 12 years of the **Third Party System (1856–1896)**, and the beginning of the **Fifth Party System (1932–1980)**.  
+- The features of the model include geographic information about the county (State and Region), election type, election results for the past 16 years in a given county, and the political alignment for all the states.
+- The election results, which serve as both the input and output of the model, are represented by a metric calculated as
+
+  $$
+  \frac{D + R}{T} \cdot \log \left( \frac{0.01 + \frac{D}{D + R}}{1.01 - \frac{D}{D + R}} \right),
+  $$
+
+  where $D$ is the number of votes for parties aligned with the Democrats, $R$ is the number of votes for parties aligned with the Republicans, and $T$ is the adjusted total number of votes. The constants $0.01$ and $1.01$ prevent the metric from approaching plus or minus infinity, and the fraction before the logarithm reduces the value of the metric when a significant third party is present.
+
+
+- We also apply **aggregate-constrained calibration** to county-level predictions in order to align them with the known statewide results.
+
+### Analytics
+- Explore vote distributions in different states and counties over the years.  
+- View trends across time or within specific parties.  
+- The main chart at the bottom of the page is inspired by a similar one created for [Wikipedia](https://en.wikipedia.org/wiki/Political_parties_in_the_United_States#/media/File:PartyVotes-Presidents.png).  
+- Other charts display the total number of victories and votes for the selected state or county, as well as the total votes across all parties.
+
+### Table
+- Interactive table of results.
+- Search, sort, and filter directly in the table.
+- Export data to CSV, Excel, or PDF.
+
+---
+
+## 4. Filters & Controls
+- **Select a State**: Limits analysis to a specific state.  
+- **Select a County**: Further narrows focus within a state.  
+- **Select Election Type**: Choose type of election (Presidential, Gubernatorial, Congressional or Senate).  
+- **Select Year Range**: Choose which years of data to display.
+- If **“-”** is selected, no filter is applied for that field.
+
+---
+
+## 5. Interpretation Tips
+- **Colors**: Each party has a distinct color, but affiliated and some minor parties share the same colors.
+- **Tooltips**: Provide additional context (party name, votes, percentages).
+
+---
+
+## 6. Limitations
+- As mentioned earlier, the data does not include all election results.  
+- Party names may change across elections.  
+- Simplifications in vote counting may affect accuracy.  
+- Predictions are based on the available data and should be interpreted cautiously.
+
+---
+
+## 7. Credits & Acknowledgments
+- **Data Providers**: [United States Historical Election Returns, 1824-1968 (ICPSR 1)](https://www.icpsr.umich.edu/web/ICPSR/studies/1/datadocumentation#), [Roee Diler](https://www.kaggle.com/roeediler) and [tigris](https://cran.r-project.org/web/packages/tigris/index.html).
+- **Packages Used**:
+  - Data manipulation `dplyr`, `tidyr`, `purrr`, `tibble`, `forcats`, `stringr`, `data.table`, `matrixStats`, `colorspace`, `readxl`, `openxlsx` and `haven`.
+  - Map: `sf`, `tigris`, `lwgeom` and `sp`.
+  - Figures and tables: `ggplot2`, `patchwork`, `plotly`, `leaflet`, `htmltools` and `DT`.
+  - Shiny and dependencies: `shiny`, `shinyjs`, `shinythemes`, `shinydashboard`, `shinycssloaders` and `shinyWidgets`.
+  - Machine learning: `xgboost`, `mlr3`, `mlr3learners` and `mlr3pipelines`.
+- **Developer**: Mgr. Martin Grätzer
+
+---
+
+## 8. Contact & Feedback
+If you encounter bugs, errors, or have suggestions:
+
+- Email: [martin.graetzer@gmail.com](mailto:martin.graetzer@gmail.com)  
+- GitHub: [Personal Portfolio Repository](https://github.com/Maertine/PersonalPortfolio)
+
+Your feedback helps improve the dashboard!
