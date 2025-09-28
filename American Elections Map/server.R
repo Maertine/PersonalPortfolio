@@ -164,7 +164,9 @@ server <- function(session,input, output) {
     list(
       county_map_data = county_map_data,
       state_map_data  = state_map_data,
-      states = states
+      states = states,
+      election_type = election_type,
+      year_of_interest = year_of_interest
     )
   }
   
@@ -204,7 +206,7 @@ server <- function(session,input, output) {
     
     if (input$level == "State-wise") {
       if (input$color_mode == 'winner') {
-        leaflet(map_data()$state_map_data) %>%
+        leaflet(map_data()$state_map_data, options = leafletOptions(attributionControl = FALSE)) %>%
           addPolygons(
             color = "black",
             weight = 0.8,
@@ -213,7 +215,7 @@ server <- function(session,input, output) {
             label = lapply(map_data()$state_map_data$tooltip, HTML),
           ) %>% setMaxBounds(lng1 = -140, lat1 = 55, lng2 = -50, lat2 = 15)
       } else {
-        leaflet(map_data()$state_map_data) %>%
+        leaflet(map_data()$state_map_data, options = leafletOptions(attributionControl = FALSE)) %>%
           addPolygons(
             color = "black",
             weight = 0.8,
@@ -235,7 +237,7 @@ server <- function(session,input, output) {
       }
       
       if (input$color_mode == 'winner') {
-        leaflet(county_map_data) %>%
+        leaflet(county_map_data, options = leafletOptions(attributionControl = FALSE)) %>%
           addPolygons(
             color = "black",
             weight = 0.35,
@@ -250,7 +252,7 @@ server <- function(session,input, output) {
             opacity     = 1
           ) %>% setMaxBounds(lng1 = -140, lat1 = 55, lng2 = -50, lat2 = 15)
       } else {
-        leaflet(county_map_data) %>%
+        leaflet(county_map_data, options = leafletOptions(attributionControl = FALSE)) %>%
           addPolygons(
             color = "black",
             weight = 0.35,
@@ -265,6 +267,140 @@ server <- function(session,input, output) {
             opacity     = 1
           ) %>% setMaxBounds(lng1 = -140, lat1 = 55, lng2 = -50, lat2 = 15)
       }
+    }
+  })
+  
+  interactive_map_plot_data <- reactive({
+    req(map_data(),input$level,input$scope)
+    
+    year_of_interest = map_data()$year_of_interest
+    election_type = map_data()$election_type
+    
+    if (input$level == 'State-wise'){
+      data_used <- state_election_data[[election_type]][[year_of_interest]]
+    }
+    else if (input$scope == 'Specific state') {
+      data_used <- county_election_data[[election_type]][[year_of_interest]] %>% filter(STATE==input$state)
+    }
+    else {
+      data_used <- county_election_data[[election_type]][[year_of_interest]]
+    }
+    
+    party_columns <- intersect(names(data_used), names(party_lookup))
+    
+    data_pie <- data_used %>%
+      summarise(across(all_of(party_columns), sum)) %>%
+      pivot_longer(everything(), names_to = "party", values_to = "votes") %>% filter(votes > 0) %>%
+      mutate(party=factor(party,levels=party_order),
+             color = party_pal(party),
+             pct = votes/sum(votes)) %>%
+      arrange(party)
+    
+    data_bar <- data_used %>%
+      dplyr::count(winner_code) %>%
+      mutate(party=factor(winner_code,levels=party_order),
+             color = party_pal(party),
+             pct = n/sum(n)) %>% arrange(party)
+    
+    list(data_pie=data_pie,data_bar=data_bar)
+  })
+  
+  output$interactive_map_pie_plot <- renderPlotly({
+    req(interactive_map_plot_data())
+    
+    plot_ly(
+      data = interactive_map_plot_data()$data_pie,
+      sort = FALSE,
+      rotation = -40,
+      labels = ~party,
+      values = ~votes,
+      type = "pie",
+      insidetextorientation = "radial",
+      marker = list(colors = ~color,line = list(color = 'black', width = 1)),
+      textinfo = "none",
+      hoverinfo = "text",
+      hovertext = ~paste0(
+        "<b>Party:</b> ", party_lookup[party],
+        "<br><b>Votes Total:</b> ", format(votes, big.mark = ","),
+        "<br><b>Share:</b> ", round(pct * 100, 1), "%"
+      )
+    ) %>%
+      layout(
+        title = "Votes total",
+        showlegend = FALSE,
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor = "rgba(0,0,0,0)",
+        margin = list(l = 0, r = 0, t = 30, b = 10),
+        annotations = list()
+    ) %>%
+      config(displayModeBar = FALSE)
+  })
+  
+  output$interactive_map_bar_plot <- renderPlotly({
+    req(interactive_map_plot_data(),input$level)
+    
+    if (input$level == 'State-wise') {
+      plot_ly(
+        data = interactive_map_plot_data()$data_bar,
+        x = ~n,
+        y = ~'',
+        type = "bar",
+        orientation = "h",
+        marker = list(
+          color = ~color,
+          line = list(color = "black", width = 1)
+        ),
+        hoverinfo = "text",
+        hovertext = ~paste0(
+          "<b>Party:</b> ", party_lookup[party],
+          "<br><b>Number of Claimed States:</b> ", n,
+          "<br><b>Share:</b> ", round(pct * 100, 1), "%"
+        )
+        
+      ) %>%
+        layout(
+          title = "Claimed States",
+          barmode = "stack",
+          xaxis = list(title = "",visible = FALSE),
+          yaxis = list(title = "",visible = FALSE),
+          showlegend = FALSE,
+          paper_bgcolor = "rgba(0,0,0,0)",
+          plot_bgcolor = "rgba(0,0,0,0)",
+          margin = list(l = 0, r = 0, t = 30, b = 0),
+          annotations = list()
+      ) %>%
+        config(displayModeBar = FALSE)
+    } else {
+      plot_ly(
+        data = interactive_map_plot_data()$data_bar,
+        x = ~n,
+        y = ~'',
+        type = "bar",
+        orientation = "h",
+        marker = list(
+          color = ~color,
+          line = list(color = "black", width = 1)
+        ),
+        hoverinfo = "text",
+        hovertext = ~paste0(
+          "<b>Party:</b> ", party_lookup[party],
+          "<br><b>Number of Claimed Counties:</b> ", n,
+          "<br><b>Share:</b> ", round(pct * 100, 1), "%"
+        )
+        
+      ) %>%
+        layout(
+          title = "Claimed Counties",
+          barmode = "stack",
+          xaxis = list(title = "",visible = FALSE),
+          yaxis = list(title = "",visible = FALSE),
+          showlegend = FALSE,
+          paper_bgcolor = "rgba(0,0,0,0)",
+          plot_bgcolor = "rgba(0,0,0,0)",
+          margin = list(l = 0, r = 0, t = 30, b = 0),
+          annotations = list()
+        ) %>%
+        config(displayModeBar = FALSE)
     }
   })
   
@@ -284,7 +420,8 @@ server <- function(session,input, output) {
               scrollWheelZoom = FALSE,
               doubleClickZoom = FALSE,
               boxZoom = FALSE,
-              touchZoom = FALSE)
+              touchZoom = FALSE,
+              attributionControl = FALSE)
     ) %>%
       addPolygons(
         color = 'black',
@@ -327,7 +464,7 @@ server <- function(session,input, output) {
     states_prediction_map(new_states_prediction_map)
   })
   
-  ## Rendering the buttons that change with the differen coloring value
+  ## Rendering the buttons that change with the different coloring value
   output$coloring_box <- renderUI({
     prediction_coloring_box(map_coloring_value())
   })

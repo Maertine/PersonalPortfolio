@@ -26,7 +26,7 @@ The underlying data comes from the dataset [United States Historical Election Re
 
 The geographical data for counties and US states used in various visualizations were downloaded using the R package [tigris](https://cran.r-project.org/web/packages/tigris/index.html). We then adjusted the maps to place Alaska and Hawaii below the lower 48 states, and we also dissolved counties that were not present in 1968.
 
-The data covers **presidential (1824–1968)**, **gubernatorial (1823–1968)**, **congressional (1834–1968)**, and **senate (1902–1968)** elections. The source claims to contain more than 90% of all county-level returns. Some notable omissions include:  
+The data covers **presidential (1824–1968)**, **gubernatorial (1823–1968)**, **congressional (1824–1968)**, and **senate (1902–1968)** elections. The source claims to contain more than 90% of all county-level returns. Some notable omissions include:  
 - Michigan and Colorado for the 1968 presidential election,  
 - Texas for the 1932 and 1936 presidential elections, as well as several other elections for various offices within this time frame,  
 - Minnesota in 1948 for all election types,  

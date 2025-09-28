@@ -397,7 +397,7 @@ prediction_coloring_box <- function(map_coloring_value) {
   box(
     width = 3,
     solidHeader = TRUE,
-    title = "Options",
+    title = "Color Selection",
     status = "primary",
     div(
       style = "display: flex; flex-direction: column; align-items: center; gap: 12px;",
